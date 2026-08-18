@@ -1,5 +1,4 @@
 #include "utils_nn.h"
-#include "backend_interface.h"
 
 static void bitFlip(Ciphertext<DCRTPoly> &c, bool withNTT, size_t k, size_t i, size_t j, size_t bit){
     if(!withNTT)
@@ -316,44 +315,154 @@ std::vector<double> loadCSVVector(const std::string& path, size_t size) {
 
     return data;
 }
-IterationResult run_iteration_NN(
+
+CampaignArgs parse_arguments(int argc, char* argv[]) {
+    CampaignArgs args;
+
+    static struct option long_options[] = {
+        {"stage",          required_argument, 0, 'S'},
+        {"bitPerCoeff",    required_argument, 0, 'c'},
+        {"logN",           required_argument, 0, 'N'},
+        {"logQ",           required_argument, 0, 'Q'},
+        {"logDelta",       required_argument, 0, 'd'},
+        {"logSlots",       required_argument, 0, 'g'},
+        {"mult_depth",     required_argument, 0, 'm'},
+        {"withNTT",        required_argument, 0, 'n'},
+        {"doAdd",          required_argument, 0, 'A'},
+        {"doPlainMul",     required_argument, 0, 'p'},
+        {"doMul",          required_argument, 0, 'M'},
+        {"doScalarMul",    required_argument, 0, 'L'},
+        {"doRot",          required_argument, 0, 'r'},
+        {"doBoot",         required_argument, 0, 'B'},
+        {"op_step",        required_argument, 0, 'o'},
+        {"op_depth",       required_argument, 0, 'O'},
+        {"isComplex",      required_argument, 0, 'X'},
+        {"isExhaustive",   required_argument, 0, 'T'},
+        {"logMin",         required_argument, 0, 'x'},
+        {"logMax",         required_argument, 0, 'y'},
+        {"seed",           required_argument, 0, 's'},
+        {"seed_input",     required_argument, 0, 'b'},
+        // only Openfhe
+        {"attackModeSKA",  required_argument, 0, 'a'},
+        {"thresholdSKA",   required_argument, 0, 't'},
+        {"dnum",           required_argument, 0, 'D'},
+        {"amountBits",     required_argument, 0, 'J'},
+        {"scaleTech",      required_argument, 0, 'C'},
+        {"results_dir",    required_argument, 0, 'R'},
+        {"verbose",        no_argument,       0, 'v'},
+        {"help",           no_argument,       0, 'h'},
+        {0, 0, 0, 0}
+    };
+
+    int opt, option_index = 0;
+
+    while ((opt = getopt_long(
+        argc, argv,
+        "S:c:N:Q:d:g:m:n:A:p:M:L:r:B:o:O:X:T:x:y:s:b:a:t:D:C:R:v:h",
+        long_options,
+        &option_index)) != -1)
+    {
+        switch (opt) {
+            case 'l':
+                args.library = optarg;
+                if (args.library != "openfhe" && args.library != "heaan") {
+                    std::cerr << "Error: library must be 'openfhe' or 'heaan'\n";
+                    std::exit(1);
+                }
+                break;
+
+            case 'c': args.bitPerCoeff = std::stoul(optarg); break;
+            case 'N': args.logN = std::stoul(optarg); break;
+            case 'Q': args.logQ = std::stoul(optarg); break;
+            case 'd': args.logDelta = std::stoul(optarg); break;
+            case 'm': args.mult_depth = std::stoul(optarg); break;
+            case 's': args.seed = std::stoul(optarg); break;
+            case 'b': args.seed_input = std::stoul(optarg); break;
+            case 'x': args.logMin = std::stoul(optarg); break;
+            case 'y': args.logMax = std::stoul(optarg); break;
+            case 'D': args.dnum= std::stoul(optarg); break;
+            case 'r': args.doRot = std::stoul(optarg); break;
+            case 'B': args.doBoot = std::stoul(optarg); break;
+            case 'o': args.op_step = std::stoul(optarg); break;
+            case 'O': args.op_depth = std::stoul(optarg); break;
+
+            case 'v':
+                args.verbose = true;
+                break;
+            case 'g':
+                args.logSlots = std::stoul(optarg);
+                break;
+
+            case 'n':  // --withNTT 0/1
+                args.withNTT = std::stoul(optarg) != 0;
+                break;
+
+            case 'A': args.doAdd = std::stoul(optarg); break;
+            case 'p': args.doPlainMul = std::stoul(optarg); break;
+            case 'M': args.doMul = std::stoul(optarg); break;
+            case 'L':
+                try {
+                    args.doScalarMul = std::stod(optarg);
+                } catch (const std::exception& e) {
+                    std::cerr << "Invalid value for -L (expected double): " << optarg << "\n";
+                    std::exit(EXIT_FAILURE);
+                }
+                break;
+
+            case 'S':
+                args.stage = optarg;
+                if (args.stage != "encode" &&
+                    args.stage != "encrypt_c0" &&
+                    args.stage != "encrypt_c1" &&
+                    args.stage != "decrypt_c0" &&
+                    args.stage != "decrypt_c1" &&
+                    args.stage != "decode" &&
+                    args.stage != "cheby_tanh3" &&
+                    args.stage != "hidden_layer" &&
+                    args.stage != "add_inside" &&
+                    args.stage != "mul_inside" &&
+                    args.stage != "rescale_inside" &&
+                    args.stage != "rot_inside" &&
+                    args.stage != "boot_outside" &&
+                    args.stage != "boot_coeff" &&
+                    args.stage != "boot_eval" &&
+                    args.stage != "boot_slot")
+                {
+                    std::cerr << "Error: invalid stage '" << args.stage
+                              << "' (expected: encode, encrypt_c0, encrypt_c1, decrypt_c0, decrypt_c1"
+                              " decode, cheby_tanh3, hidden_layer,  mul_inside or mul_outside"
+                              "boot_outisde, boot_coeff, boot_eval, boot_slots)\n";
+                    std::exit(EXIT_FAILURE);
+                }
+                break;
+
+            case 'X':
+                args.isComplex= std::stoul(optarg);
+                break;
+
+            case 'C':
+                args.scaleTech= optarg;
+                break;
+
+        }
+    }
+
+    return args;
+}
+
+int run_iteration_NN(
     HEEnv& he,
     EncodedWeights encoded,
     const vector<double>& vals,
     CampaignArgs& args,
-    size_t targetValue,
-    std::optional<IterationArgs> iterArgs
+    size_t targetValue
 ) {
     size_t verbose = args.verbose;
 
     // ===== Encoding =====
     Plaintext ptxt = he.cc->MakeCKKSPackedPlaintext(vals);
 
-    if (iterArgs && args.stage == "encode") {
-        bitFlip(ptxt, args.withNTT,
-                iterArgs->limb,
-                iterArgs->coeff,
-                iterArgs->bit);
-    }
-    // ===== Encrypt =====
- //   lbcrypto::PseudoRandomNumberGenerator::SetPRNGSeed(args.seed);
     auto c = he.cc->Encrypt(he.keys.publicKey, ptxt);
-
-    if (iterArgs) {
-        if (args.stage == "encrypt_c0") {
-            bitFlip(c, args.withNTT, 0,
-                    iterArgs->limb,
-                    iterArgs->coeff,
-                    iterArgs->bit);
-        } else if (args.stage == "encrypt_c1") {
-            bitFlip(c, args.withNTT, 1,
-                    iterArgs->limb,
-                    iterArgs->coeff,
-                    iterArgs->bit);
-        }
-    }
-
-
 
     if (verbose)
         cout << "Running encrypted inference..." << endl;
@@ -362,19 +471,7 @@ IterationResult run_iteration_NN(
 
     if (verbose)
         cout << "Decrypting..." << endl;
-    if (iterArgs) {
-        if (args.stage == "decrypt_c0") {
-            bitFlip(outputs[targetValue], args.withNTT, 0,
-                    iterArgs->limb,
-                    iterArgs->coeff,
-                    iterArgs->bit);
-        } else if (args.stage == "decrypt_c1") {
-            bitFlip(outputs[targetValue], args.withNTT, 1,
-                    iterArgs->limb,
-                    iterArgs->coeff,
-                    iterArgs->bit);
-        }
-    }
+
     auto logits = decryptLogits(he, outputs);
 
     // ===== Prediction =====
@@ -388,9 +485,6 @@ IterationResult run_iteration_NN(
         }
     }
 
-    IterationResult res;
-    res.detected = (pred == targetValue);
-
     if (verbose) {
         cout << "\nPrediction: " << pred
              << "\nTarget:     " << targetValue << endl;
@@ -400,8 +494,5 @@ IterationResult run_iteration_NN(
     } else {
         cout << (pred == targetValue ? 1 : 0) << endl;
     }
-
-    return res;
+    return (pred == targetValue ? 1 : 0);
 }
-
-

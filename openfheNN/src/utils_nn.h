@@ -6,11 +6,7 @@
 #include <vector>
 #include <algorithm>
 
-#include "campaign_helper.h"
-#include "backend_interface.h"
-#include "utils_ckks.h"
-
-#include "attack_mode.h"
+#include <getopt.h>
 #include <cassert>
 using namespace lbcrypto;
 using namespace std;
@@ -95,6 +91,49 @@ vector<Ciphertext<DCRTPoly>> forward(
     long logP
 );
 
+struct CampaignArgs {
+    std::string library = "none";
+    std::string stage = "none";
+
+    uint32_t bitPerCoeff = 64;
+    uint32_t logN = 3;
+    uint32_t logQ = 60;
+    uint32_t logDelta = 50;
+    uint32_t logSlots = 2;
+    uint32_t mult_depth = 0;
+    uint32_t logMin = 0;
+    uint32_t logMax = 0;
+
+    uint32_t seed = 0;
+    uint32_t seed_input = 0;
+
+    bool withNTT = false;
+    uint32_t doAdd = false;
+    uint32_t doPlainMul = 0;
+    uint32_t doMul = 0;
+    double doScalarMul = 0;
+    uint32_t doRot = 0;
+    uint32_t doBoot = 0;
+    uint32_t op_step = 0;
+    uint32_t op_depth = 0;
+    size_t isComplex = 0;
+    bool verbose = false;
+    uint32_t dnum = 3;
+    std::string scaleTech = "FIXEDMANUAL";
+};
+
+
+CampaignArgs parse_arguments(int argc, char* argv[]);
+
+int run_iteration_NN(
+    HEEnv& he,
+    EncodedWeights encoded,
+    const vector<double>& vals,
+    CampaignArgs& args,
+    size_t targetValue
+) ;
+
+
 vector<double> decryptLogits(HEEnv& he, vector<Ciphertext<DCRTPoly>>& outs
 );
 
@@ -106,6 +145,5 @@ std::vector<std::vector<double>> loadCSVMatrix(const std::string& path, size_t r
 
 std::vector<double> loadCSVVector(const std::string& path, size_t size);
 
-IterationResult run_iteration_NN(HEEnv& he, EncodedWeights encoded, const vector<double>& vals, CampaignArgs& args, size_t targetValue, std::optional<IterationArgs> iterArgs=std::nullopt);
 
 

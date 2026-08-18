@@ -1,29 +1,18 @@
 #include "utils_nn.h"
-#include "campaign_helper.h"
-#include "campaign_logger.h"
-#include "campaign_registry.h"
-#include "backend_interface.h"
-#include "utils_nn.h"
 
 const size_t INPUT_DIM = 784;
 const size_t HIDDEN_DIM = 64;
 const size_t OUTPUT_DIM = 10;
 const double PIXEL_MAX = 255.0;
-const std::string path = "../NN_config/data/";
 size_t LAPS = 15;
-using namespace std;
+const std::string path = "../NN_config/data/";
 
+using namespace std;
 int main(int argc, char* argv[]) {
 
     std::cout << "\n=== Starting Campaign "<< std::endl;
     CampaignArgs args = parse_arguments(argc, argv);
     args.library = "openfheNN";
-    args.isExhaustive= false;
-
-    if (args.verbose) {
-        args.print();
-    }
-
     long logQ = args.logQ;
     long logP = args.logDelta;
     long multDepth = args.mult_depth;
@@ -79,15 +68,11 @@ int main(int argc, char* argv[]) {
     if(verbose)
         cout << "Encrypting input..." << endl;
 
-    auto start_time = std::chrono::high_resolution_clock::now();
     for(size_t i=0 ; i<LAPS;i++){
         args.seed++;
-        IterationResult res = run_iteration_NN(he, encoded, vals, args, targetValue);
+        int res = run_iteration_NN(he, encoded, vals, args, targetValue);
     }
-    auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration = end_time - start_time;
 
-    std::cout << "Time: " << duration.count()/LAPS << " s"  << std::endl;
 
 
 

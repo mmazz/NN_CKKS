@@ -1,21 +1,5 @@
 cmake_minimum_required(VERSION 3.16.3)
-get_filename_component(PROJECT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
-
-### To use gcc/g++ on a Macintosh, you must set the Compilers
-### here, not inside the project
-##if(APPLE)
-##       set(CMAKE_C_COMPILER "/usr/local/bin/gcc-7")
-##       set(CMAKE_CXX_COMPILER "/usr/local/bin/g++-7")
-##endif()
-### TODO: for now, we use CLang for Mac
-###
-### In order to create OpenFHE's static libraries you should enable
-### the BUILD_STATIC option. For that, you run "cmake .. -DBUILD_STATIC=ON".
-### After having your link completed you will find static libs
-### with the suffix "_static" in ./build/libs/.
-### Examples: OPENFHEpke_static.a, OPENFHEcore_static.a, etc.
-### After you run "make install" in your build directory, you can build your custom application.
-### If you need your application to be linked statically, then run "cmake .. -DBUILD_STATIC=ON"
+get_filename_component(PROJECT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 
 project(demo CXX)
 set(CMAKE_CXX_STANDARD 17)
@@ -62,41 +46,23 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-set(PROJECT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../..")
-
-add_library(mainlib_common
-    ${PROJECT_ROOT}/src/common/utils_ckks.cpp
-    ${PROJECT_ROOT}/src/common/campaign_helper.cpp
-    ${PROJECT_ROOT}/src/common/campaign_logger.cpp
-    ${PROJECT_ROOT}/src/common/campaign_registry.cpp
-)
-
+set(PROJECT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
 add_library(backend_openfhe
-    ${PROJECT_ROOT}/backends/openfhe/src/backend.cpp
-    ${PROJECT_ROOT}/backends/openfheNN/src/utils_nn.cpp
+    ${PROJECT_ROOT}/openfheNN/src/utils_nn.cpp
 )
 
-target_include_directories(backend_openfhe PUBLIC
-    ${PROJECT_ROOT}/src/common
-    ${PROJECT_ROOT}/backends/openfhe/src
-    ${PROJECT_ROOT}/backends/openfhe/src/nn_mnist/src
-    ${OPENFHE_INCLUDE_DIR}  # donde tengas OpenFHE
-)
 target_link_libraries(backend_openfhe
     PUBLIC
-        mainlib_common
         ${OpenFHE_SHARED_LIBRARIES}
 )
 set(EXECUTABLES
     nn_mnist
-    randomSingleBitFlip
 )
-
 
 foreach(exec_name ${EXECUTABLES})
     add_executable(${exec_name} src/${exec_name}.cpp)
-    target_link_libraries(${exec_name} PRIVATE mainlib_common backend_openfhe ${OpenFHE_SHARED_LIBRARIES})
+    target_link_libraries(${exec_name} PRIVATE backend_openfhe ${OpenFHE_SHARED_LIBRARIES})
 endforeach()
 
 
