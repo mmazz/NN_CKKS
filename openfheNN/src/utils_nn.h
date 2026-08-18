@@ -5,9 +5,9 @@
 #include <NTL/ZZ.h>
 #include <vector>
 #include <algorithm>
-
 #include <getopt.h>
 #include <cassert>
+
 using namespace lbcrypto;
 using namespace std;
 

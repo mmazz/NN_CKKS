@@ -1,9 +1,4 @@
 #include "utils_nn.h"
-#include "campaign_helper.h"
-#include "campaign_logger.h"
-#include "campaign_registry.h"
-#include "backend_interface.h"
-#include "utils_ckks.h"
 
 const size_t INPUT_DIM = 784;
 const size_t HIDDEN_DIM = 64;
@@ -17,13 +12,7 @@ int main(int argc, char* argv[]) {
     std::cout << "\n=== Starting Campaign "<< std::endl;
     CampaignArgs args = parse_arguments(argc, argv);
     args.library = "heaanNN";
-    args.isExhaustive= false;
     args.mult_depth = 0;
-
-    if (args.verbose) {
-        args.print();
-    }
-
 
     long logQ = args.logQ;
     long logP = args.logDelta;
@@ -80,16 +69,11 @@ int main(int argc, char* argv[]) {
     if(verbose)
         cout << "Encrypting input..." << endl;
 
-    auto start_time = std::chrono::high_resolution_clock::now();
     uint32_t dummy=0;
     for(size_t i=0 ; i<LAPS;i++){
         args.seed++;
-        IterationResult res = run_iteration_NN(he, encoded, vals, args, targetValue, dummy, dummy);
+        int res = run_iteration_NN(he, encoded, vals, args, targetValue);
     }
-    auto end_time = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration = end_time - start_time;
-    std::cout << "Time: " << duration.count()/LAPS << " s"  << std::endl;
-
 
 
     return 0;

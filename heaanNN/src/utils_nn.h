@@ -4,9 +4,8 @@
 #include <vector>
 #include <algorithm>
 #include <cassert>
-#include "campaign_helper.h"
-#include "backend_interface.h"
-#include "utils_ckks.h"
+#include <getopt.h>
+#include <cassert>
 
 struct HEEnv {
     Context context;
@@ -35,6 +34,37 @@ struct EncodedWeights {
 };
 
 
+struct CampaignArgs {
+    std::string library = "none";
+    std::string stage = "none";
+
+    uint32_t bitPerCoeff = 64;
+    uint32_t logN = 3;
+    uint32_t logQ = 60;
+    uint32_t logDelta = 50;
+    uint32_t logSlots = 2;
+    uint32_t mult_depth = 0;
+    uint32_t logMin = 0;
+    uint32_t logMax = 0;
+
+    uint32_t seed = 0;
+    uint32_t seed_input = 0;
+
+    bool withNTT = false;
+    uint32_t doAdd = false;
+    uint32_t doPlainMul = 0;
+    uint32_t doMul = 0;
+    double doScalarMul = 0;
+    uint32_t doRot = 0;
+    uint32_t doBoot = 0;
+    uint32_t op_step = 0;
+    uint32_t op_depth = 0;
+    size_t isComplex = 0;
+    bool verbose = false;
+    uint32_t dnum = 3;
+    std::string scaleTech = "FIXEDMANUAL";
+};
+
 EncodedWeights encodeWeights(
     HEEnv& he,
     const vector<vector<double>>& W1,
@@ -57,8 +87,7 @@ void reduceSum(
     HEEnv& he,
     Ciphertext& ct,
     long logSlots,
-    uint32_t &reduceSum_layer,
-    CampaignArgs& args, std::optional<IterationArgs> iterArgs
+    CampaignArgs& args
 );
 
 vector<Plaintext> decryptLogits(
@@ -80,23 +109,16 @@ std::vector<std::vector<double>> loadCSVMatrix(const std::string& path, size_t r
 
 std::vector<double> loadCSVVector(const std::string& path, size_t size);
 
-IterationResult run_iteration_NN(HEEnv& he, EncodedWeights encoded,
-        const vector<double>& vals, CampaignArgs& args, size_t targetValue,
-        uint32_t &hidden_layer, uint32_t &reduceSum_layer,
-        std::optional<IterationArgs> iterArgs=std::nullopt
+CampaignArgs parse_arguments(int argc, char* argv[]);
+int run_iteration_NN(HEEnv& he, EncodedWeights encoded,
+        const vector<double>& vals, CampaignArgs& args, size_t targetValue
 );
 
 Ciphertext chebyTanh3(
     HEEnv& he,
     Ciphertext c,
-    long logP, CampaignArgs& args, uint32_t hidden,
-     std::optional<IterationArgs> iterArgs
+    long logP, CampaignArgs& args
 );
-
-IterationResult run_iteration_NNOp(HEEnv& he, EncodedWeights encoded,
-        const vector<double>& vals, CampaignArgs& args, size_t targetValue,
-        std::optional<IterationArgs> iterArgs=std::nullopt
-        );
 
 vector<Ciphertext> forward(
     HEEnv& he,
@@ -104,7 +126,5 @@ vector<Ciphertext> forward(
     EncodedWeights& ew,
     long logSlots,
     long logP,
-    uint32_t &hidden_layer,
-    uint32_t &reduceSum_layer,
-    CampaignArgs& args, std::optional<IterationArgs> iterArgs
+    CampaignArgs& args
 );
